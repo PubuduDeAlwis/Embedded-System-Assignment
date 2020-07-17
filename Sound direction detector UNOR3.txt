@@ -1,0 +1,42 @@
+#include <stdio.h>
+#include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+
+
+int main(){ 
+  	DDRB |=(1<<PB1);
+
+	OCR1A = 4999;//control frequency of PWM signal(50Hz)
+    OCR1B = 700;//control duty cycle(0-700 range use for turn servo 0-180 degrees)
+
+	//CTC mode,internal clk,set prescaler
+	TCCR1B = 0b00001011;
+	TIMSK1 = 0b00000110;	//enable Timer1 compare match A and compare match B.
+	sei ();			//enable global interrupts
+  
+	float potval;
+	int duty;
+	Serial.begin(9600);
+
+	while(1){
+      if(Serial.available()){
+        String rec=Serial.readStringUntil('\n');
+        Serial.println(rec);
+        Serial.println(rec.substring(0,3));
+        int duty=rec.substring(0,3).toInt();
+        Serial.println(duty);
+        OCR1B = duty;
+      }
+	}
+}
+
+ISR (TIMER1_COMPA_vect) {	//ISR for Timer1 compare match A
+		//set PORTB.1
+  		PORTB |= (1<<PB1);
+}
+
+ISR (TIMER1_COMPB_vect) {	//ISR for Timer1 compare match A
+		//clear PORTB.1
+  		PORTB &= ~(1<<PB1);
+}

@@ -1,0 +1,54 @@
+#include <stdio.h>
+#include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+
+void InitADC(){
+    // Select Vref=AVcc
+    ADMUX |= (1<<REFS0);
+    //set prescaller to 128 and enable ADC 
+    ADCSRA |= (1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0)|(1<<ADEN);    
+}
+uint16_t ReadADC(uint8_t ADCchannel){
+    //select ADC channel with safety mask
+    ADMUX = (ADMUX & 0xF0) | (ADCchannel & 0x0F);
+    //single conversion mode
+    ADCSRA |= (1<<ADSC);
+    // wait until ADC conversion is complete
+    while( ADCSRA & (1<<ADSC) );
+   return ADC;
+}
+
+int main(){ 
+  	DDRB |=(1<<PB0);
+
+	OCR1A = 4999;//control frequency of PWM signal(50Hz)
+    OCR1B = 700;//control duty cycle (0-700 range use for turn servo 0-180 degrees)
+	//CTC mode, internal clk, prescaler
+	TCCR1B = 0b00001011;
+	TIMSK1 = 0b00000110;	//enable Timer1 compare match A int and compare match B.
+	sei ();			//enable interrupts
+  
+	float potval;
+	int duty;
+	InitADC();
+	Serial.begin(9600);
+
+	while(1){
+  		potval=(float)ReadADC(0)/1023*700;
+  		duty=potval;
+  		Serial.println(duty);
+      	OCR1B = duty;
+    	_delay_ms(100);
+	}
+}
+
+ISR (TIMER1_COMPA_vect) {	//ISR for Timer1 compare match A
+		//PORTB |= (1<<PB5);//set PORTB.5
+  		PORTB |= (1<<PB0);
+}
+
+ISR (TIMER1_COMPB_vect) {	//ISR for Timer1 compare match A
+		//PORTB &= ~(1<<PB5);//clear PORTB.5
+  		PORTB &= ~(1<<PB0);
+}
